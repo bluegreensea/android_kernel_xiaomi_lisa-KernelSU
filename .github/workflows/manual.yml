@@ -221,7 +221,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/common"
           mkdir out
           ARCH=arm64 scripts/kconfig/merge_config.sh -O out -m \
-            arch/arm64/configs/gki_defconfig \
+            arch/arm64/configs/vendor/lahaina-qgki_defconfig \
             arch/arm64/configs/vendor/xiaomi_QGKI.config
           make -j$(nproc --all) O=out ARCH=arm64 olddefconfig \
             LLVM=1 \
