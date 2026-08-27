@@ -133,6 +133,11 @@ jobs:
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
+      - name: Fix Kernel Configuration
+        run: |
+          cd "$CONFIG"
+          echo "CONFIG_RPS=y" >> "${{ env.DEFCONFIG }}"
+
       - name: Configure KernelSU Core
         run: |
           cd "$CONFIG"
