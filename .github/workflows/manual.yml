@@ -136,6 +136,8 @@ jobs:
       - name: Fix Kernel Configuration
         run: |
           cd "$CONFIG"
+          echo "CONFIG_SMP=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_SYSFS=y" >> "${{ env.DEFCONFIG }}"
           echo "CONFIG_RPS=y" >> "${{ env.DEFCONFIG }}"
 
       - name: Configure KernelSU Core
