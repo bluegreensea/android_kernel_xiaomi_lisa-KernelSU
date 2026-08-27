@@ -24,14 +24,15 @@ jobs:
           echo "CONFIG=$CONFIG" >> $GITHUB_ENV
 
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
       - name: Checkout kernel source repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
-          repository: 'NSR-Resources/android_kernel_xiaomi_lisa'
+          repository: 'Rocky7842/android_kernel_xiaomi_sm8350'
+          ref: 'lineage-23.2'
           fetch-depth: 1
           path: common
 
@@ -53,7 +54,7 @@ jobs:
           echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
       - name: Restore ccache from cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.ccache
           key: ccache-${{ github.sha }}
@@ -64,7 +65,7 @@ jobs:
         run: |
           mkdir -p $GITHUB_WORKSPACE/output
           cd $GITHUB_WORKSPACE/output
-          curl -L -o magiskboot.7z "https://github.com/xiaoxindada/magisk_bins_ndk/releases/download/magisk_bins-29001-cf09f1c1061138652a435cba3e675508730b0464/magisk_bins.7z"
+          curl -L -o magiskboot.7z "https://github.com/xiaoxindada/magisk_bins_ndk/releases/download/magisk_bins-30700-9d863eca67a437a2a672a4a5ec1f8374e5a66158/magisk_bins.7z"
           7z x magiskboot.7z
           cp ./native/out/x86_64/magiskboot .
           chmod +x magiskboot
@@ -95,21 +96,7 @@ jobs:
       - name: Clone Other Dependencies
         run: |
           cd "$GITHUB_WORKSPACE"
-          SUSFS_BRANCH="gki-android15-6.6"
-          echo "Using branch for SUSFS: $SUSFS_BRANCH"
-          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
-          echo "SUSFS_REPO=https://gitlab.com/simonpunk/susfs4ksu" >> $GITHUB_ENV
-          cd susfs4ksu
-          echo "SUSFS_SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          echo "SUSFS_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          cd ..
           git clone https://github.com/WildPlusKernel/kernel_patches.git
-
-      - name: Revert KernelSU Hooks Changes
-        run: |
-          cd "$GITHUB_WORKSPACE/common"
-          git fetch origin a780ad19a84a0f8b3fe644ffa748c1985e5c7006 --depth=2
-          git revert -n a780ad19a84a0f8b3fe644ffa748c1985e5c7006 # drivers: Add KernelSU hooks
 
       - name: Apply ptrace patch
         run: |
@@ -119,101 +106,23 @@ jobs:
       - name: Add KernelSU
         run: |
           cd "$GITHUB_WORKSPACE/common"
-          mkdir ./KernelSU-Next
-          mv drivers/kernelsu KernelSU-Next/kernel
-          cd drivers/
-          ln -s ../KernelSU-Next/kernel kernelsu
-          # curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s next
-          # echo "KSU_REPO=https://github.com/KernelSU-Next/KernelSU-Next" >> $GITHUB_ENV
-          # cd KernelSU-Next
-          # echo "KSU_SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          # echo "KSU_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          # # git revert -n d9239343e697ff497ea0037e242303e9b66e9a7e # kernel: auto patch struct seccomp to include filter_count
-          # cd ..
-
-      - name: Apply SUSFS Patches
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          
-          # Copy SUSFS patches
-          cp susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch ./common
-          cd common
-          
-          echo -e "\033[0;32minfo: fix fs/Makefile patch\e[0m"
-          patch -p1 --forward < fix-1+fs_Makefile+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix fs/exec.c patch\e[0m"
-          patch -p1 --forward < fix-2+fs_exec.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix fs/namei.c patch\e[0m"
-          patch -p1 --forward < fix-3+fs_namei.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix fs/namespace.c patch\e[0m"
-          patch -p1 --forward < fix-4+fs_namespace.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix fs/notify/fdinfo.c patch\e[0m"
-          patch -p1 --forward < fix-5+fs_notify_fdinfo.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix fs/open.c patch\e[0m"
-          patch -p1 --forward < fix-6+fs_open.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix fs/proc/bootconfig.c patch\e[0m"
-          patch -p1 --forward < fix-7+fs_proc_bootconfig.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix fs/proc/fd.c patch\e[0m"
-          patch -p1 --forward < fix-8+fs_proc_fd.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix fs/proc/task_mmu.c patch\e[0m"
-          patch -p1 --forward < fix-9+fs_proc_task_mmu.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix fs/readdir.c patch\e[0m"
-          patch -p1 --forward < fix-10+fs_readdir.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix fs/stat.c patch\e[0m"
-          patch -p1 --forward < fix-11+fs_stat.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix include/linux/mount.h patch\e[0m"
-          patch -p1 --forward < fix-12+include_linux_mount.h+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix security/selinux/avc.c patch\e[0m"
-          patch -p1 --forward < fix-13+security_selinux_avc.c+50_add_susfs_in_gki-android15-6.6.patch.patch
-          echo -e "\033[0;32minfo: fix patch end\e[0m"
-          
-          patch -p1 --forward < 50_add_susfs_in_gki-android15-6.6.patch
-          cp ../susfs4ksu/kernel_patches/fs/* ./fs/
-          cp ../susfs4ksu/kernel_patches/include/linux/* ./include/linux/
-          
-          echo "Applying SUSFS patches..."
-          cd ./KernelSU-Next
-          cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
-          patch -p1 --forward < 10_enable_susfs_for_ksu.patch || true
-          
-          cp ../../kernel_patches/next/susfs_fix_patches/v1.5.12/fix_apk_sign.c.patch ./
-          patch -p1 --forward < fix_apk_sign.c.patch
-          
-          cp ../../kernel_patches/next/susfs_fix_patches/v1.5.12/fix_core_hook.c.patch ./
-          patch -p1 --forward --fuzz=3 < fix_core_hook.c.patch
-          
-          # cp ../../kernel_patches/wild/susfs_fix_patches/v1.5.9/fix_rules.c.patch ./
-          # patch -p1 --forward < fix_rules.c.patch
-          
-          cp ../../kernel_patches/next/susfs_fix_patches/v1.5.12/fix_sucompat.c.patch ./
-          patch -p1 --forward < fix_sucompat.c.patch
-          
-          cp ../../kernel_patches/next/susfs_fix_patches/v1.5.12/fix_kernel_compat.c.patch ./
-          patch -p1 --forward < fix_kernel_compat.c.patch
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
+          echo "KSU_REPO=https://github.com/KernelSU-Next/KernelSU-Next" >> $GITHUB_ENV
+          cd KernelSU-Next
+          echo "KSU_SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "KSU_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          KSU_GIT_VER=$(git rev-list --count HEAD)
+          echo "KSU_VER=$(expr 30000 + ${KSU_GIT_VER})" >> $GITHUB_ENV
+          cd ..
 
       - name: Apply Hooks Patches
         run: |
           cd "$GITHUB_WORKSPACE/common"
           
           echo "Applying hooks..."
-          cp ../kernel_patches/next/scope_min_manual_hooks_v1.4.patch ./
-          patch -p1 -F 3 < scope_min_manual_hooks_v1.4.patch
-
-      # - name: Apply KernelSU Symbol Fix Patch
-      #   run: |
-      #     cd "$GITHUB_WORKSPACE/common/KernelSU-Next/kernel"
-      #     # sed -i 's|\(atomic_set(&current->seccomp.filter_count, 0);\)|// \1|' core_hook.c
-      # - name: Apply Module Symbol Version Fix Patch
-      #   run: |
-      #     cd "$GITHUB_WORKSPACE/common/kernel"
-      #     #sed -i 's/pr_warn("%s: disagrees about version of symbol %s\\n"/pr_warn("%s: disagrees about version of symbol %s, but ignore...\\n"/' module.c
-      #     sed -i '/bad_version:/{:a;n;/return 0;/{s/return 0;/return 1;/;b};ba}' module.c
-
-      - name: Apply Hide Stuff Patches
-        run: |
-          cd "$GITHUB_WORKSPACE/common"
-          cp ../kernel_patches/69_hide_stuff.patch ./
-          patch -p1 -F 3 < 69_hide_stuff.patch
+          cp ../kernel_patches/next/scope_min_manual_hooks_v1.6.patch ./
+          sed -i 's|static int do_execve(struct filename \*filename,|int do_execve(struct filename *filename,|' ./scope_min_manual_hooks_v1.6.patch
+          patch -p1 -F 3 < ./scope_min_manual_hooks_v1.6.patch
 
       - name: Set Kernel Configuration Variables
         run: |
@@ -285,32 +194,6 @@ jobs:
           echo "CONFIG_IP_SET_HASH_NETIFACE=y" >> "${{ env.DEFCONFIG }}"
           echo "CONFIG_IP_SET_LIST_SET=y" >> "${{ env.DEFCONFIG }}"
 
-      - name: Configure SUSFS
-        run: |
-          cd "$CONFIG"
-          # SUSFS Configuration
-          echo "# SUSFS Configuration" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS=y" >> "${{ env.DEFCONFIG }}"
-          echo "#CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> "${{ env.DEFCONFIG }}"
-
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "${{ env.DEFCONFIG }}"
-
-          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=n" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_SUS_MAP=n" >> "${{ env.DEFCONFIG }}"
-
-          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> "${{ env.DEFCONFIG }}"
-
       - name: Configure Build Optimization
         run: |
           cd "$CONFIG"
@@ -334,7 +217,7 @@ jobs:
           chmod +x build.sh
           ./build.sh
           export version=$(make -j$(nproc --all) -s O=out kernelrelease)
-          export version=$(echo ${version/-dirty/-susfs-g${{ env.SUSFS_SHORT_SHA }}})
+          export version=$(echo ${version/-dirty/-ksun-g${{ env.KSU_SHORT_SHA }}})
           echo "RELEASE_TAG=$version" >> $GITHUB_ENV
           cp $GITHUB_WORKSPACE/common/out/arch/arm64/boot/Image $GITHUB_WORKSPACE/output
           ccache --show-stats
@@ -347,18 +230,18 @@ jobs:
           7z a kernel.7z kernel
 
       - name: Upload Kernel
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kernel
           path: output/kernel
 
       - name: Upload Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           body: |
             Kernel ${{ env.RELEASE_TAG }}
-            KernelSU Next + SUSFS [${{ env.SUSFS_SHORT_SHA }}](${{ env.SUSFS_REPO }}/commit/${{ env.SUSFS_SHA }})
+            KernelSU Next ${{ env.KSU_VER }} [${{ env.KSU_SHORT_SHA }}](${{ env.KSU_REPO }}/commit/${{ env.KSU_SHA }})
           files: |
             output/kernel
             output/kernel.7z
