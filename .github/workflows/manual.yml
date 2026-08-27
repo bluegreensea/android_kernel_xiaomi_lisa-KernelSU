@@ -137,7 +137,6 @@ jobs:
         run: |
           cd "$CONFIG"
           echo "CONFIG_ICNSS2_QMI=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_NET=y" >> "${{ env.DEFCONFIG }}"
 
       - name: Configure KernelSU Core
         run: |
@@ -220,7 +219,10 @@ jobs:
       - name: Build Kernel Configuration
         run: |
           cd "$GITHUB_WORKSPACE/common"
-          make -j$(nproc --all) O=out ARCH=arm64 lisa_defconfig \
+          ARCH=arm64 scripts/kconfig/merge_config.sh -O out -m \
+            arch/arm64/configs/gki_defconfig \
+            arch/arm64/configs/vendor/xiaomi_QGKI.config
+          make -j$(nproc --all) O=out ARCH=arm64 olddefconfig \
             LLVM=1 \
             LLVM_IAS=1 \
             HOSTLD=ld.lld \
