@@ -218,15 +218,36 @@ jobs:
           cp $GITHUB_WORKSPACE/toolchains/libufdt/utils/src/mkdtboimg.py mkdtboimg.py
           sed -i 's|python2|python3|' Makefile.lib
 
+      - name: Build Kernel Configuration
+        run: |
+          cd "$GITHUB_WORKSPACE/common"
+          make -j$(nproc --all) O=out ARCH=arm64 lisa_defconfig \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            HOSTLD=ld.lld \
+            CC="/usr/bin/ccache clang" \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+          cat out/include/generated/autoconf.h
+
       - name: Build Kernel
         run: |
           cd $GITHUB_WORKSPACE/common
-          chmod +x build.sh
-          ./build.sh
+          make -j$(nproc --all) O=out ARCH=arm64 \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            HOSTLD=ld.lld \
+            CC="/usr/bin/ccache clang" \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+          cp $GITHUB_WORKSPACE/common/out/arch/arm64/boot/Image $GITHUB_WORKSPACE/output
+
+      - name: Build Kernel Info
+        run: |
+          cd $GITHUB_WORKSPACE/common
           export version=$(make -j$(nproc --all) -s O=out kernelrelease)
           export version=$(echo ${version/-dirty/-ksun-g${{ env.KSU_SHORT_SHA }}})
           echo "RELEASE_TAG=$version" >> $GITHUB_ENV
-          cp $GITHUB_WORKSPACE/common/out/arch/arm64/boot/Image $GITHUB_WORKSPACE/output
           ccache --show-stats
           df -H .
 
