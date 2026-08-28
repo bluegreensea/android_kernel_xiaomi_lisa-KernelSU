@@ -39,6 +39,9 @@ jobs:
       - name: Merge files
         run: |
           cd $GITHUB_WORKSPACE/common
+          echo "KERNEL_REPO=https://github.com/Rocky7842/android_kernel_xiaomi_sm8350" >> $GITHUB_ENV
+          echo "KERNEL_SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "KERNEL_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
           find ../ -maxdepth 1 -type f -exec cp -v {} ./ \;
 
       - name: Update and install required packages
@@ -106,8 +109,8 @@ jobs:
       - name: Add KernelSU
         run: |
           cd "$GITHUB_WORKSPACE/common"
-          curl -LSs "https://raw.githubusercontent.com/MirahSyakilla/KSUN/main/kernel/setup.sh" | bash -s susfs+nomount-hookless
-          echo "KSU_REPO=https://github.com/KernelSU-Next/KernelSU-Next" >> $GITHUB_ENV
+          curl -LSs "https://raw.githubusercontent.com/MirahSyakilla/KSUN/susfs%2Bnomount-hookless/kernel/setup.sh" | bash -s susfs+nomount-hookless
+          echo "KSU_REPO=https://github.com/MirahSyakilla/KSUN" >> $GITHUB_ENV
           cd KernelSU-Next
           echo "KSU_SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "KSU_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
@@ -287,7 +290,8 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           body: |
             Kernel ${{ env.RELEASE_TAG }}
-            KernelSU Next ${{ env.KSU_VER }} [${{ env.KSU_SHORT_SHA }}](${{ env.KSU_REPO }}/commit/${{ env.KSU_SHA }})
+            Kernel [${{ env.KERNEL_SHORT_SHA }}](${{ env.KERNEL_REPO }}/commit/${{ env.KERNEL_SHA }})
+            KernelSU Next [${{ env.KSU_SHORT_SHA }}](${{ env.KSU_REPO }}/commit/${{ env.KSU_SHA }})
           files: |
             output/kernel
             output/kernel.7z
