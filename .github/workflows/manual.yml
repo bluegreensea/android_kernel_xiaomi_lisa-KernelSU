@@ -116,14 +116,14 @@ jobs:
           cd ..
           sed -i 's|#include <linux/version.h>|#include <linux/version.h>\n#include <linux/ratelimit.h>|' ./drivers/kernelsu/extras.c
 
-      - name: Apply Hooks Patches
-        run: |
-          cd "$GITHUB_WORKSPACE/common"
-          
-          echo "Applying hooks..."
-          cp ../kernel_patches/next/scope_min_manual_hooks_v1.6.patch ./
-          sed -i 's|static int do_execve(struct filename \*filename,|int do_execve(struct filename *filename,|' ./scope_min_manual_hooks_v1.6.patch
-          patch -p1 -F 3 < ./scope_min_manual_hooks_v1.6.patch
+      # - name: Apply Hooks Patches
+      #   run: |
+      #     cd "$GITHUB_WORKSPACE/common"
+      #     
+      #     echo "Applying hooks..."
+      #     cp ../kernel_patches/next/scope_min_manual_hooks_v1.6.patch ./
+      #     sed -i 's|static int do_execve(struct filename \*filename,|int do_execve(struct filename *filename,|' ./scope_min_manual_hooks_v1.6.patch
+      #     patch -p1 -F 3 < ./scope_min_manual_hooks_v1.6.patch
 
       - name: Set Kernel Configuration Variables
         run: |
