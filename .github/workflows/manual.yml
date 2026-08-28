@@ -54,7 +54,7 @@ jobs:
           echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
       - name: Restore ccache from cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: ~/.ccache
           key: ccache-${{ github.sha }}
@@ -106,7 +106,7 @@ jobs:
       - name: Add KernelSU
         run: |
           cd "$GITHUB_WORKSPACE/common"
-          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
+          curl -LSs "https://raw.githubusercontent.com/MirahSyakilla/KSUN/main/kernel/setup.sh" | bash -s susfs+nomount-hookless
           echo "KSU_REPO=https://github.com/KernelSU-Next/KernelSU-Next" >> $GITHUB_ENV
           cd KernelSU-Next
           echo "KSU_SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
@@ -133,18 +133,23 @@ jobs:
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
-      - name: Fix Kernel Configuration
-        run: |
-          cd "$CONFIG"
-          echo "CONFIG_ICNSS2_QMI=y" >> "${{ env.DEFCONFIG }}"
-
       - name: Configure KernelSU Core
         run: |
           cd "$CONFIG"
           # KernelSU Configuration
           echo "# KernelSU Configuration" >> "${{ env.DEFCONFIG }}"
           echo "CONFIG_KSU=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_KPROBES_HOOK=n" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_KSU_KPROBES_HOOK=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_KSU_HACK_ARM64_BRANCH_LINK=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_KSU_KPROBES_NOMOUNT=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_KSU_KPROBES_SUSFS=y" >> "${{ env.DEFCONFIG }}"
+          
+          echo "CONFIG_KALLSYMS=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_KALLSYMS_ALL=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_KPROBES=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_KRETPROBES=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_HAVE_KPROBES=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_HAVE_KRETPROBES=y" >> "${{ env.DEFCONFIG }}"
 
       - name: Configure Mountify Support
         run: |
@@ -222,7 +227,9 @@ jobs:
           mkdir out
           ARCH=arm64 scripts/kconfig/merge_config.sh -O out -m \
             arch/arm64/configs/vendor/lahaina-qgki_defconfig \
-            arch/arm64/configs/vendor/xiaomi_QGKI.config
+            arch/arm64/configs/vendor/debugfs.config \
+            arch/arm64/configs/vendor/xiaomi_QGKI.config \
+            arch/arm64/configs/lisa_defconfig
           make -j$(nproc --all) O=out ARCH=arm64 olddefconfig \
             LLVM=1 \
             LLVM_IAS=1 \
@@ -233,6 +240,7 @@ jobs:
           cat out/include/generated/autoconf.h
 
       - name: Build Kernel
+        id: build
         run: |
           cd $GITHUB_WORKSPACE/common
           make -j$(nproc --all) O=out ARCH=arm64 \
@@ -243,6 +251,13 @@ jobs:
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
           cp $GITHUB_WORKSPACE/common/out/arch/arm64/boot/Image $GITHUB_WORKSPACE/output
+
+      - name: Always Save ccache to cache
+        if: success() || steps.build.conclusion == 'failure'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.ccache
+          key: ccache-${{ github.sha }}
 
       - name: Build Kernel Info
         run: |
