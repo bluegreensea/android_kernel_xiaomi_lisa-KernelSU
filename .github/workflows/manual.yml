@@ -114,6 +114,7 @@ jobs:
           KSU_GIT_VER=$(git rev-list --count HEAD)
           echo "KSU_VER=$(expr 30000 + ${KSU_GIT_VER})" >> $GITHUB_ENV
           cd ..
+          sed -i 's|#include <linux/version.h>|#include <linux/version.h>\n#include <linux/ratelimit.h>|' ./drivers/kernelsu/extras.c
 
       - name: Apply Hooks Patches
         run: |
