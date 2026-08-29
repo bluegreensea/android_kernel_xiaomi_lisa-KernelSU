@@ -106,28 +106,6 @@ jobs:
           cd "$GITHUB_WORKSPACE/common"
           patch -p1 -F 3 < "../kernel_patches/gki_ptrace.patch"
 
-      - name: Add KernelSU
-        run: |
-          cd "$GITHUB_WORKSPACE/common"
-          curl -LSs "https://raw.githubusercontent.com/MirahSyakilla/KSUN/susfs%2Bnomount-hookless/kernel/setup.sh" | bash -s susfs+nomount-hookless
-          echo "KSU_REPO=https://github.com/MirahSyakilla/KSUN" >> $GITHUB_ENV
-          cd KernelSU-Next
-          echo "KSU_SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          echo "KSU_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          KSU_GIT_VER=$(git rev-list --count HEAD)
-          echo "KSU_VER=$(expr 30000 + ${KSU_GIT_VER})" >> $GITHUB_ENV
-          cd ..
-          sed -i 's|#include <linux/version.h>|#include <linux/version.h>\n#include <linux/ratelimit.h>|' ./drivers/kernelsu/extras.c
-
-      # - name: Apply Hooks Patches
-      #   run: |
-      #     cd "$GITHUB_WORKSPACE/common"
-      #     
-      #     echo "Applying hooks..."
-      #     cp ../kernel_patches/next/scope_min_manual_hooks_v1.6.patch ./
-      #     sed -i 's|static int do_execve(struct filename \*filename,|int do_execve(struct filename *filename,|' ./scope_min_manual_hooks_v1.6.patch
-      #     patch -p1 -F 3 < ./scope_min_manual_hooks_v1.6.patch
-
       - name: Set Kernel Configuration Variables
         run: |
           cd "$CONFIG"
@@ -136,24 +114,6 @@ jobs:
           
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
-
-      - name: Configure KernelSU Core
-        run: |
-          cd "$CONFIG"
-          # KernelSU Configuration
-          echo "# KernelSU Configuration" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_KPROBES_HOOK=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_HACK_ARM64_BRANCH_LINK=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_KPROBES_NOMOUNT=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KSU_KPROBES_SUSFS=y" >> "${{ env.DEFCONFIG }}"
-          
-          echo "CONFIG_KALLSYMS=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KALLSYMS_ALL=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KPROBES=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_KRETPROBES=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_HAVE_KPROBES=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_HAVE_KRETPROBES=y" >> "${{ env.DEFCONFIG }}"
 
       - name: Configure Mountify Support
         run: |
@@ -255,19 +215,21 @@ jobs:
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
           cp $GITHUB_WORKSPACE/common/out/arch/arm64/boot/Image $GITHUB_WORKSPACE/output
+          cp $GITHUB_WORKSPACE/common/out/arch/arm64/boot/dts/vendor/qcom/*.dtb $GITHUB_WORKSPACE/output
+          cp $GITHUB_WORKSPACE/common/out/arch/arm64/boot/dts/vendor/qcom/*.dtbo $GITHUB_WORKSPACE/output
 
       - name: Always Save ccache to cache
         if: success() || steps.build.conclusion == 'failure'
         uses: actions/cache/save@v6
         with:
           path: ~/.ccache
-          key: ccache-${{ github.sha }}
+          key: ccache-clean-${{ github.sha }}
 
       - name: Build Kernel Info
         run: |
           cd $GITHUB_WORKSPACE/common
           export version=$(make -j$(nproc --all) -s O=out kernelrelease)
-          export version=$(echo ${version/-dirty/-ksun-g${{ env.KSU_SHORT_SHA }}})
+          export version=$(echo ${version/-dirty/-clean})
           echo "RELEASE_TAG=$version" >> $GITHUB_ENV
           ccache --show-stats
           df -H .
@@ -277,6 +239,8 @@ jobs:
           cd $GITHUB_WORKSPACE/output
           mv Image kernel
           7z a kernel.7z kernel
+          7z a dtb.7z *.dtb
+          7z a dtbo.7z *.dtbo
 
       - name: Upload Kernel
         uses: actions/upload-artifact@v7
@@ -291,7 +255,8 @@ jobs:
           body: |
             Kernel ${{ env.RELEASE_TAG }}
             Kernel [${{ env.KERNEL_SHORT_SHA }}](${{ env.KERNEL_REPO }}/commit/${{ env.KERNEL_SHA }})
-            KernelSU Next [${{ env.KSU_SHORT_SHA }}](${{ env.KSU_REPO }}/commit/${{ env.KSU_SHA }})
           files: |
             output/kernel
             output/kernel.7z
+            output/dtb.7z
+            output/dtbo.7z
