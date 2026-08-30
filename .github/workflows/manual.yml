@@ -62,7 +62,7 @@ jobs:
           path: ~/.ccache
           key: ccache-${{ github.sha }}
           restore-keys: |
-            ccache-
+            ccache-clean-
 
       - name: Prepare magiskboot
         run: |
@@ -96,88 +96,13 @@ jobs:
           # Export path
           export PATH="$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin:$PATH"
 
-      - name: Clone Other Dependencies
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          git clone https://github.com/WildPlusKernel/kernel_patches.git
-
-      - name: Apply ptrace patch
-        run: |
-          cd "$GITHUB_WORKSPACE/common"
-          patch -p1 -F 3 < "../kernel_patches/gki_ptrace.patch"
-
       - name: Set Kernel Configuration Variables
         run: |
           cd "$CONFIG"
           echo "Initializing kernel configuration..."
-          echo "DEFCONFIG=./common/arch/arm64/configs/lisa_defconfig" >> $GITHUB_ENV
           
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
-
-      - name: Configure Mountify Support
-        run: |
-          cd "$CONFIG"
-          # Mountify Support
-          echo "# Mountify Support" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_TMPFS_XATTR=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_TMPFS_POSIX_ACL=y" >> "${{ env.DEFCONFIG }}"
-
-      - name: Configure Networking
-        run: |
-          cd "$CONFIG"
-          # Networking Configuration
-          echo "# Networking Configuration" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_NF_TARGET_TTL=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP6_NF_TARGET_HL=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP6_NF_MATCH_HL=y" >> "${{ env.DEFCONFIG }}"
-
-      - name: Configure TCP Congestion Control
-        run: |
-          cd "$CONFIG"
-          # BBR TCP Congestion Control
-          echo "# BBR TCP Congestion Control" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_TCP_CONG_ADVANCED=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_TCP_CONG_BBR=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_NET_SCH_FQ=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_TCP_CONG_BIC=n" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_TCP_CONG_WESTWOOD=n" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_TCP_CONG_HTCP=n" >> "${{ env.DEFCONFIG }}"
-
-      - name: Configure IPSet Support
-        run: |
-          cd "$CONFIG"
-          # IPSet support
-          echo "# IPSet Support" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_MAX=65534" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_BITMAP_IP=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_BITMAP_IPMAC=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_BITMAP_PORT=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_IP=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_IPMARK=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_IPPORT=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_IPPORTIP=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_IPPORTNET=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_IPMAC=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_MAC=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_NETPORTNET=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_NET=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_NETNET=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_NETPORT=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_HASH_NETIFACE=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_IP_SET_LIST_SET=y" >> "${{ env.DEFCONFIG }}"
-
-      - name: Configure Build Optimization
-        run: |
-          cd "$CONFIG"
-          # Build Optimization Configuration
-          echo "# Build Optimization Configuration" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_LTO_CLANG_THIN=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_LTO_CLANG=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3=n" >> "${{ env.DEFCONFIG }}"
-          echo "CONFIG_OPTIMIZE_INLINING=y" >> "${{ env.DEFCONFIG }}"
 
       - name: Prepare Build
         run: |
@@ -192,8 +117,7 @@ jobs:
           ARCH=arm64 scripts/kconfig/merge_config.sh -O out -m \
             arch/arm64/configs/vendor/lahaina-qgki_defconfig \
             arch/arm64/configs/vendor/debugfs.config \
-            arch/arm64/configs/vendor/xiaomi_QGKI.config \
-            arch/arm64/configs/lisa_defconfig
+            arch/arm64/configs/vendor/xiaomi_QGKI.config
           make -j$(nproc --all) O=out ARCH=arm64 olddefconfig \
             LLVM=1 \
             LLVM_IAS=1 \
@@ -223,7 +147,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ~/.ccache
-          key: ccache-clean-${{ github.sha }}
+          key: clean-ccache-${{ github.sha }}
 
       - name: Build Kernel Info
         run: |
@@ -237,8 +161,8 @@ jobs:
       - name: Pack up
         run: |
           cd $GITHUB_WORKSPACE/output
+          7z a kernel.7z Image
           mv Image kernel
-          7z a kernel.7z kernel
           7z a dtb.7z *.dtb
           7z a dtbo.7z *.dtbo
 
