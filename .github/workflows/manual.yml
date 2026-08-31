@@ -62,7 +62,7 @@ jobs:
           path: ~/.ccache
           key: ccache-${{ github.sha }}
           restore-keys: |
-            ccache-clean-
+            clean-ccache-
 
       - name: Prepare magiskboot
         run: |
