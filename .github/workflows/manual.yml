@@ -47,6 +47,7 @@ jobs:
       - name: Update and install required packages
         run: |
           sudo apt update
+          sudo apt purge -y clang
           sudo apt install -y libc6-dev gcc-multilib flex bison libssl-dev bc python3 zip unzip lld llvm p7zip-full ccache jq
 
       - name: Set up ccache
@@ -101,10 +102,7 @@ jobs:
           done
           # Export path
           export PATH="$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin:$PATH"
-          echo "export PATH=$PATH" >> $GITHUB_ENV
-          which clang
-          clang --version
-          echo "CLANG_PATH=$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin" >> "$GITHUB_ENV"
+          echo "PATH=$PATH" >> $GITHUB_ENV
 
       - name: Set Kernel Configuration Variables
         run: |
@@ -132,7 +130,7 @@ jobs:
             LLVM=1 \
             LLVM_IAS=1 \
             HOSTLD=ld.lld \
-            CC="/usr/bin/ccache $CLANG_PATH/clang" \
+            CC="/usr/bin/ccache clang" \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
           echo -e "\033[0;32minfo: .config\e[0m"
@@ -146,7 +144,7 @@ jobs:
             LLVM=1 \
             LLVM_IAS=1 \
             HOSTLD=ld.lld \
-            CC="/usr/bin/ccache $CLANG_PATH/clang" \
+            CC="/usr/bin/ccache clang" \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
           cp $GITHUB_WORKSPACE/common/out/arch/arm64/boot/Image $GITHUB_WORKSPACE/output
