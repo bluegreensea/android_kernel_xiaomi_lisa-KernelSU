@@ -100,7 +100,11 @@ jobs:
             fi
           done
           # Export path
-          echo "export PATH=$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin:$PATH" >> $GITHUB_ENV
+          export PATH="$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin:$PATH"
+          echo "export PATH=$PATH" >> $GITHUB_ENV
+          which clang
+          clang --version
+          echo "CLANG_PATH=$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin" >> "$GITHUB_ENV"
 
       - name: Set Kernel Configuration Variables
         run: |
@@ -128,7 +132,7 @@ jobs:
             LLVM=1 \
             LLVM_IAS=1 \
             HOSTLD=ld.lld \
-            CC="/usr/bin/ccache clang" \
+            CC="/usr/bin/ccache $CLANG_PATH/clang" \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
           echo -e "\033[0;32minfo: .config\e[0m"
@@ -142,7 +146,7 @@ jobs:
             LLVM=1 \
             LLVM_IAS=1 \
             HOSTLD=ld.lld \
-            CC="/usr/bin/ccache clang" \
+            CC="/usr/bin/ccache $CLANG_PATH/clang" \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
           cp $GITHUB_WORKSPACE/common/out/arch/arm64/boot/Image $GITHUB_WORKSPACE/output
