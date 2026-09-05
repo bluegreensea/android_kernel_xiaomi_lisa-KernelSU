@@ -81,17 +81,14 @@ jobs:
           cd $GITHUB_WORKSPACE/toolchains
           # git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --branch=main-kernel-2026 --depth=1
           mkdir linux-x86 && cd linux-x86
-          git init 
-          git remote add origin https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86
-          git fetch origin 0332c9031603e7595541cc1b5325431436c899b8 --depth 1
-          git reset --hard 0332c9031603e7595541cc1b5325431436c899b8
+          git clone https://github.com/bluegreensea/android_prebuilts_clang_kernel_linux-x86_clang-r563880c.git --depth=1 clang-r563880c
           cd ..
           git clone https://android.googlesource.com/platform/system/libufdt --branch=main --depth=1
 
       - name: Remove unnecessary tools
         run: |
           cd $GITHUB_WORKSPACE/toolchains/linux-x86
-          latest_clang=$(find . -maxdepth 1 -type d -name "clang-r563880c" | sed 's|.*/||' | sort -Vr | head -n 1)
+          latest_clang=$(find . -maxdepth 1 -type d -name "clang-r*" | sed 's|.*/||' | sort -Vr | head -n 1)
           echo "Latest Clang version detected: $latest_clang"
           
           for dir in clang-r*; do
@@ -108,9 +105,40 @@ jobs:
         run: |
           cd "$CONFIG"
           echo "Initializing kernel configuration..."
+          echo "DEFCONFIG=./common/arch/arm64/configs/lisa_defconfig" >> $GITHUB_ENV
           
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
+
+      - name: Configure Fix
+        run: |
+          cd "$CONFIG"
+          # Configuration
+          echo "# Configuration" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_CNSS_UTILS=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_CNSS_QMI_SVC=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_TOUCHSCREEN_QGKI_GOODIX=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_TOUCHSCREEN_GOODIX_BRL=m" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_TOUCHSCREEN_GOODIX_TS_TOOLS=m" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_TOUCHSCREEN_GOODIX_TS_GESTURE=m" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE=m" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_INPUT_QCOM_HV_HAPTICS=n" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_INPUT_AW8624_HAPTIC=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_FINGERPRINT_FPC_TEE=m" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_PINCTRL_SM7325=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_BQ2597X=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_LEDS_QPNP_VIBRATOR_LDO=n" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_MSM_IDLE_STATS=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_MSM_IDLE_STATS_FIRST_BUCKET=62500" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_MSM_IDLE_STATS_BUCKET_SHIFT=2" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_MSM_IDLE_STATS_BUCKET_COUNT=10" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_MSM_SUSPEND_STATS_FIRST_BUCKET=1000000000" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_CNSS_QCA6750=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_IIO_BUFFER_CB=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_IIO_KFIFO_BUF=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_IIO_TRIGGERED_BUFFER=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_MIUS_PROXIMITY=y" >> "${{ env.DEFCONFIG }}"
+          echo "CONFIG_PAGE_EXTENSION=y" >> "${{ env.DEFCONFIG }}"
 
       - name: Prepare Build
         run: |
@@ -125,7 +153,8 @@ jobs:
           ARCH=arm64 scripts/kconfig/merge_config.sh -O out -m \
             arch/arm64/configs/vendor/lahaina-qgki_defconfig \
             arch/arm64/configs/vendor/debugfs.config \
-            arch/arm64/configs/vendor/xiaomi_QGKI.config
+            arch/arm64/configs/vendor/xiaomi_QGKI.config \
+            arch/arm64/configs/lisa_defconfig
           make -j$(nproc --all) O=out ARCH=arm64 olddefconfig \
             LLVM=1 \
             LLVM_IAS=1 \
