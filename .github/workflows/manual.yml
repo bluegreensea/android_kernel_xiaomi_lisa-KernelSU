@@ -47,7 +47,7 @@ jobs:
       - name: Update and install required packages
         run: |
           sudo apt update
-          sudo apt install -y libc6-dev clang gcc-multilib flex bison libssl-dev bc python3 zip unzip lld llvm p7zip-full ccache jq
+          sudo apt install -y libc6-dev gcc-multilib flex bison libssl-dev bc python3 zip unzip lld llvm p7zip-full ccache jq
 
       - name: Set up ccache
         run: |
@@ -100,7 +100,7 @@ jobs:
             fi
           done
           # Export path
-          echo "export PATH=\"$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin:$PATH\"" >> $GITHUB_ENV
+          echo "export PATH=$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin:$PATH" >> $GITHUB_ENV
 
       - name: Set Kernel Configuration Variables
         run: |
