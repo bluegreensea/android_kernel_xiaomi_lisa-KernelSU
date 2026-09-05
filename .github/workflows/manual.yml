@@ -78,13 +78,19 @@ jobs:
         run: |
           mkdir -p $GITHUB_WORKSPACE/toolchains
           cd $GITHUB_WORKSPACE/toolchains
-          git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --branch=main-kernel-build-2024 --depth=1
+          # git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --branch=main-kernel-2026 --depth=1
+          mkdir linux-x86 && cd linux-x86
+          git init 
+          git remote add origin https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86
+          git fetch origin 0332c9031603e7595541cc1b5325431436c899b8 --depth 1
+          git reset --hard 0332c9031603e7595541cc1b5325431436c899b8
+          cd ..
           git clone https://android.googlesource.com/platform/system/libufdt --branch=main --depth=1
 
       - name: Remove unnecessary tools
         run: |
           cd $GITHUB_WORKSPACE/toolchains/linux-x86
-          latest_clang=$(find . -maxdepth 1 -type d -name "clang-r*" | sed 's|.*/||' | sort -Vr | head -n 1)
+          latest_clang=$(find . -maxdepth 1 -type d -name "clang-r563880c" | sed 's|.*/||' | sort -Vr | head -n 1)
           echo "Latest Clang version detected: $latest_clang"
           
           for dir in clang-r*; do
@@ -94,7 +100,7 @@ jobs:
             fi
           done
           # Export path
-          export PATH="$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin:$PATH"
+          echo "export PATH=\"$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin:$PATH\"" >> $GITHUB_ENV
 
       - name: Set Kernel Configuration Variables
         run: |
@@ -125,7 +131,8 @@ jobs:
             CC="/usr/bin/ccache clang" \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
-          cat out/include/generated/autoconf.h
+          echo -e "\033[0;32minfo: .config\e[0m"
+          cat out/.config
 
       - name: Build Kernel
         id: build
