@@ -62,7 +62,7 @@ jobs:
           path: ~/.ccache
           key: ccache-${{ github.sha }}
           restore-keys: |
-            ccache-
+            ksu-ccache-
 
       - name: Prepare magiskboot
         run: |
@@ -95,16 +95,6 @@ jobs:
           done
           # Export path
           export PATH="$GITHUB_WORKSPACE/toolchains/linux-x86/$latest_clang/bin:$PATH"
-
-      - name: Clone Other Dependencies
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          git clone https://github.com/WildPlusKernel/kernel_patches.git
-
-      - name: Apply ptrace patch
-        run: |
-          cd "$GITHUB_WORKSPACE/common"
-          patch -p1 -F 3 < "../kernel_patches/gki_ptrace.patch"
 
       - name: Set Kernel Configuration Variables
         run: |
